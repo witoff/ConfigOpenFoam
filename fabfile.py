@@ -7,7 +7,7 @@ Fabfile for openfoam deployments
 Usage:
 1. setup your hosts and keys
 2. configure your sever with `fab ec2 preconfig`
-3. after reboot, continue configuration with `fab ec2 setup`
+3. after reboot, continue configuration with `fab ec2 setup setupVnc`
 4. Go to town on examples with `fab ec2 [example, damBreak, damBreakFine]
 """
 
@@ -75,7 +75,8 @@ def setup():
     # export PATH=$ParaView_DIR/bin:$PATH
     # export PV_PLUGIN_PATH=$FOAM_LIBBIN/paraview-3.12
 
-    # Setup VNC 
+def setupVnc():
+    # Setup VNC server
     #   via: http://coddswallop.wordpress.com/2012/05/09/ubuntu-12-04-precise-pangolin-complete-vnc-server-setup/
     sudo('apt-get install linux-headers-$(uname -r)')
     sudo('dpkg-reconfigure nvidia-current')
@@ -96,7 +97,6 @@ def setup():
 
     #Start vnc
     run('vncserver')
-    
     
     #Copy in Example Files
     run('mkdir -p $FOAM_RUN')
