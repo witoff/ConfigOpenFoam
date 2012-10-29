@@ -2,6 +2,14 @@ from fabric.api import run, env, sudo, cd, settings, prefix
 from getpass import getpass
 from time import sleep
 
+"""
+Fabfile for openfoam deployments
+Usage:
+1. setup your hosts and keys
+2. configure your sever with `fab ec2 preconfig`
+3. after reboot, continue configuration with `fab ec2 setup`
+4. Go to town on examples with `fab ec2 [example, damBreak, damBreakFine]
+"""
 
 #Build for a Precise ubuntu x64 instance
 def ec2():
@@ -32,7 +40,7 @@ def preconfig():
     sudo('apt-get -y upgrade')
     sudo('shutdown -r now')
 
-def setupApt():
+def setup():
     #My files
     sudo('apt-get -y install git')
     run('git clone https://github.com/witoff/ConfigOpenFoam.git')
@@ -62,12 +70,16 @@ def setupApt():
     with cd('$WM_THIRD_PARTY_DIR'):
         run('./makeParaView')
     
+    ## Exports thef following params
     # export ParaView_DIR=/opt/ThirdParty-2.1.1/platforms/linux64Gcc/paraview-3.12.0
     # export PATH=$ParaView_DIR/bin:$PATH
     # export PV_PLUGIN_PATH=$FOAM_LIBBIN/paraview-3.12
 
     # Setup VNC 
     #   via: http://coddswallop.wordpress.com/2012/05/09/ubuntu-12-04-precise-pangolin-complete-vnc-server-setup/
+    sudo('apt-get install linux-headers-$(uname -r)')
+    sudo('dpkg-reconfigure nvidia-current')
+    
     sudo('apt-get -y install gnome-core gnome-session-fallback')
     sudo('apt-get -y install vnc4server')
     sudo('apt-get -y install expect')
@@ -79,23 +91,9 @@ def setupApt():
     
     run('vncserver')
     run('vncserver -kill :1')
-    
-    # sudo Move to ~/.vnc/xstartup
-    """
-    #!/bin/sh
 
-    # Uncomment the following two lines for normal desktop:
-    unset SESSION_MANAGER
-    #exec /etc/X11/xinit/xinitrc
-    gnome-session –-session=gnome-classic &
+    sudo('cp ~/ConfigOpenFoam/xstartup ~/.vnc/xstartup')
 
-    [ -x /etc/vnc/xstartup ] && exec /etc/vnc/xstartup
-    [ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources
-    xsetroot -solid grey
-    vncconfig -iconic &
-    #x-terminal-emulator -geometry 80×24+10+10 -ls -title “$VNCDESKTOP Desktop” &
-    #x-window-manager &
-    """
     #Start vnc
     run('vncserver')
     
@@ -112,72 +110,6 @@ def setupApt():
         run('cp -r damBreak/system damBreakFine')
         run('cp -r damBreak/constant damBreakFine')
         run('cp ~/ConfigOpenFoam/blockMeshDict damBreakFine/constant/polyMesh/blockMeshDict')
-
-def setupVNC():
-    #Install VNC
-    # http://coddswallop.wordpress.com/2012/05/09/ubuntu-12-04-precise-pangolin-complete-vnc-server-setup/
-    # OLD http://www.serverwatch.com/server-tutorials/setting-up-vnc-on-ubuntu-in-the-amazon-ec2-Page-3.html
-    sudo('apt-get -y install ubuntu-desktop')
-    sudo('apt-get -y install vnc4server')
-    sudo('apt-get -y install expect')
-
-    #setup vnc passwd
-    passwd = 'password'
-    run('echo -e "spawn vncpasswd\nexpect Password:\nsend %s\\r\nexpect Verify:\nsend %s\\r" > vnc.txt' % (passwd, passwd))
-    run('expect vnc.txt')
-    #? Need to start the vncserver?
-    
-    # /home/ubuntu/.vnc/xstartup -->
-    """
-    #!/bin/sh
-
-    # Uncomment the following two lines for normal desktop:
-    unset SESSION_MANAGER
-    exec sh /etc/X11/xinit/xinitrc
-
-    [ -x /etc/vnc/xstartup ] && exec /etc/vnc/xstartup
-    [ -r $HOME/.Xresources ] && xrdb $HOME/.Xresources
-    xsetroot -solid grey
-    vncconfig -iconic &
-    
-    x-terminal-emulator -geometry 80x24+10+10 -ls -title "$VNCDESKTOP Desktop" &
-    x-window-manager &
-    """
-    
-    # sudo vi /etc/X11/Xwrapper.config     
-    # Change last line to: 
-    #  - allowed_users=anybody
-    sudo('chmod a+rw ~/.Xauthority')
-    
-    # Configure nvidia Drivers
-    apt-get upgrade 
-    <reboot>
-    
-    
-
-    
-    ####################################
-    ## USING VNC
-    ####################################
-    
-    ##
-    # TO VNC
-    ##
-    # Login and run: 
-    #   vncserver"
-    #  (Kill with: $: vncserver  -kill :1)
-    #OPTIONAL Run this command locally to setup ssh tunneld VNC routing
-    #OPTIONAL   ssh -L 5901:127.0.0.1:5901 -N -i '/Users/witoff/.ssh/sp-one.pem' -f -l ubuntu ubuntu@54.245.34.154
-    # On your mac, run RemoteDesktop-VNC
-    #   vnc://54.243.138.71:5901
-
-
-    # Paraview business
-    sudo apt-get install make cmake build-essential
-    cd $FOAM_UTILITIES/postProcessing/graphics/PV3Readers
-    ./Allwclean
-    # may need to chown to ubuntu
-    ./Allwmake  
     
 def example():
     #Simple incompressible flow example
